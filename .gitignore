@@ -1,0 +1,7 @@
+.metadata
+*.swp
+classes
+*.aux
+*.log
+*.pdf
+*.gz
