@@ -1,7 +1,10 @@
 .metadata
+.recommenders
 *.swp
 classes
 *.aux
 *.log
 *.pdf
 *.gz
+.classpath
+.project
