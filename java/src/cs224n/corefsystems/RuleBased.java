@@ -122,9 +122,7 @@ public class RuleBased implements CoreferenceSystem {
 			currMention = m;
 			Pair<ClusteredMention,Boolean> old = treeToEntityMap.get(Pair.make(m.sentence, rangeOfMention(m)));
 			ClusteredMention oldCm = old.getFirst();
-			if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
-				System.out.println(oldCm);
-			}
+
 			if (old.getSecond()) {
 				continue;
 			}
@@ -132,11 +130,6 @@ public class RuleBased implements CoreferenceSystem {
 				ClusteredMention cm = HobbsAlgorithm(m);
 				if (cm != null) {
 					treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(cm, false));
-					if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
-						System.out.println(oldCm);
-						System.out.println("converted to");
-						System.out.println(cm);
-					}
 					clusters.remove(oldCm);
 					clusters.add(cm);
 					if (numToSee == 0) {
@@ -434,11 +427,6 @@ public class RuleBased implements CoreferenceSystem {
 			return null;
 		}
 		ClusteredMention cm = curr.getFirst();
-		
-		
-		if (currDoc.id.contains("(wb/a2e/00/a2e_0025); part 006") && currMention.gloss().equals("I")) {
-			System.out.println("what");
-		}
 
 		Pronoun pOther = Pronoun.valueOrNull(cm.mention.gloss().toUpperCase().replaceAll(" ","_"));
 		Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
