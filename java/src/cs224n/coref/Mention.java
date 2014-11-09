@@ -48,6 +48,10 @@ public class Mention implements Serializable, Decodable {
    */
   protected Entity corefferentWith = null;
 
+  public Entity getEntity() {
+	  return corefferentWith;
+  }
+  
   /**
    * Create a new mention from the necessary parameters.
    * You should not have to use this method.

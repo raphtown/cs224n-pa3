@@ -52,7 +52,7 @@ public class BetterBaseline implements CoreferenceSystem {
 				}
 			}
 			
-			// Otherwise try matching to other heads that were found to be coreferrent in the training.
+			// Otherwise try matching to other heads that were found to be coreferent in the training.
 			if (!foundCoreferent && coreferentHeads.containsKey(referringHead)) {
 				for (String referredHead : coreferentHeads.get(referringHead)) {
 					if (seenHeads.containsKey(referredHead)) {
