@@ -105,7 +105,7 @@ public class RuleBased implements CoreferenceSystem {
 			}
 		}
 
-		if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) { // TODO
+//		if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) { // TODO
 			// Hobbs algorithm
 			for (Mention m : doc.getMentions()) {
 				currMention = m;
@@ -132,7 +132,7 @@ public class RuleBased implements CoreferenceSystem {
 				}
 
 			}
-		}
+//		}
 
 		return clusters;
 	}
