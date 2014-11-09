@@ -425,6 +425,11 @@ public class RuleBased implements CoreferenceSystem {
 		Pronoun pOther = Pronoun.valueOrNull(cm.mention.gloss().toUpperCase().replaceAll(" ","_"));
 		Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
 		
+		String headWordOther = cm.mention.headWord();
+		if (pCurr != null && pOther == null && pCurr.plural && headWordOther.charAt(headWordOther.length() - 1) != 's') {
+			return null;
+		}
+		
 		if (pOther == null || pCurr == null || 
 				(cs224n.coref.Util.haveGenderAndAreSameGender(currMention, cm.mention).equals(Pair.make(true, true)) &&
 				cs224n.coref.Util.haveNumberAndAreSameNumber(currMention, cm.mention).equals(Pair.make(true, true)) &&
