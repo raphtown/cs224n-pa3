@@ -16,6 +16,7 @@ import cs224n.coref.Document;
 import cs224n.coref.Entity;
 import cs224n.coref.Mention;
 import cs224n.coref.Pronoun;
+import cs224n.coref.Pronoun.Speaker;
 import cs224n.coref.Sentence;
 import cs224n.ling.Tree;
 import cs224n.util.Pair;
@@ -33,15 +34,19 @@ public class RuleBased implements CoreferenceSystem {
 				for(Pair<Mention, Mention> mentionPair : e.orderedMentionPairs()){
 					String referringHead = mentionPair.getFirst().headWord();
 					String referredHead = mentionPair.getSecond().headWord();
-					
-					Pronoun pFirst = Pronoun.valueOrNull(mentionPair.getFirst().gloss().toUpperCase().replaceAll(" ","_"));
-					Pronoun pSecond = Pronoun.valueOrNull(mentionPair.getSecond().gloss().toUpperCase().replaceAll(" ","_"));
 
-				
-					if (!Pronoun.isSomePronoun(mentionPair.getFirst().gloss()) || !Pronoun.isSomePronoun(mentionPair.getSecond().gloss()) ||
+					Pronoun pFirst = Pronoun.valueOrNull(mentionPair.getFirst().headWord().toUpperCase().replaceAll(" ","_"));
+					Pronoun pSecond = Pronoun.valueOrNull(mentionPair.getSecond().headWord().toUpperCase().replaceAll(" ","_"));
+
+					if (!Pronoun.isSomePronoun(mentionPair.getFirst().headWord()) || !Pronoun.isSomePronoun(mentionPair.getSecond().headWord()) ||
 							(cs224n.coref.Util.haveGenderAndAreSameGender(mentionPair.getFirst(), mentionPair.getSecond()).equals(Pair.make(true, true)) &&
-							cs224n.coref.Util.haveNumberAndAreSameNumber(mentionPair.getFirst(), mentionPair.getSecond()).equals(Pair.make(true, true)) &&
-							pFirst.speaker.equals(pSecond.speaker))) {
+									cs224n.coref.Util.haveNumberAndAreSameNumber(mentionPair.getFirst(), mentionPair.getSecond()).equals(Pair.make(true, true)) &&
+									pFirst.speaker.equals(pSecond.speaker))) {
+						if (referringHead.equals("I") && referredHead.equals("you")) {
+							System.out.println("C : " + pFirst + " " + pSecond);
+							System.out.println("C : " + mentionPair.getFirst().gloss() + " " + mentionPair.getSecond().gloss());
+						}
+
 						if (!coreferentHeads.containsKey(referringHead)) {
 							coreferentHeads.put(referringHead, new HashSet<String>());
 							coreferentHeads.get(referringHead).add(referringHead);
@@ -73,7 +78,9 @@ public class RuleBased implements CoreferenceSystem {
 			for (ClusteredMention seenMentions : clusters) {
 				if(m.gloss().equals(seenMentions.mention.gloss())) {
 					ClusteredMention cm = m.markCoreferent(seenMentions);
-
+					if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
+						System.out.println("A : " + cm);
+					}
 					treeToEntityMap.put(Pair.make(m.sentence,rangeOfMention(m)), Pair.make(cm, true));
 					clusters.add(cm);
 					foundCoreferent = true;
@@ -83,11 +90,18 @@ public class RuleBased implements CoreferenceSystem {
 
 			// Otherwise try matching to other heads that were found to be coreferent in the training.
 			if (!foundCoreferent && coreferentHeads.containsKey(referringHead)) {
+				if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
+					System.out.println(referringHead);
+					System.out.println(coreferentHeads.get(referringHead));
+				}
 				for (String referredHead : coreferentHeads.get(referringHead)) {
 					if (seenHeads.containsKey(referredHead)) {
 						ClusteredMention oldCm = seenHeads.get(referredHead);
 						ClusteredMention newCm = m.markCoreferent(oldCm);
 						clusters.add(newCm);
+						if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
+							System.out.println("B : " + newCm);
+						}
 						treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(newCm, false));
 						seenHeads.put(referringHead, oldCm);
 						foundCoreferent = true;
@@ -105,34 +119,37 @@ public class RuleBased implements CoreferenceSystem {
 			}
 		}
 
-//		if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) { // TODO
-			// Hobbs algorithm
-			for (Mention m : doc.getMentions()) {
-				currMention = m;
-				Pair<ClusteredMention,Boolean> old = treeToEntityMap.get(Pair.make(m.sentence, rangeOfMention(m)));
-				ClusteredMention oldCm = old.getFirst();
-				if (old.getSecond()) {
-					continue;
-				}
-				if(Pronoun.isSomePronoun(m.gloss())) {
-					ClusteredMention cm = HobbsAlgorithm(m);
-					if (cm != null) {
-						treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(cm, false));
+		// Hobbs algorithm
+		for (Mention m : doc.getMentions()) {
+			currMention = m;
+			Pair<ClusteredMention,Boolean> old = treeToEntityMap.get(Pair.make(m.sentence, rangeOfMention(m)));
+			ClusteredMention oldCm = old.getFirst();
+			if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
+				System.out.println(oldCm);
+			}
+			if (old.getSecond()) {
+				continue;
+			}
+			if(Pronoun.isSomePronoun(m.gloss())) {
+				ClusteredMention cm = HobbsAlgorithm(m);
+				if (cm != null) {
+					treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(cm, false));
+					if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
 						System.out.println(oldCm);
 						System.out.println("converted to");
 						System.out.println(cm);
-						clusters.remove(oldCm);
-						clusters.add(cm);
-						if (numToSee == 0) {
-							//							System.exit(0);
-						} else {
-							numToSee--;
-						}
+					}
+					clusters.remove(oldCm);
+					clusters.add(cm);
+					if (numToSee == 0) {
+						//							System.exit(0);
+					} else {
+						numToSee--;
 					}
 				}
-
 			}
-//		}
+
+		}
 
 		return clusters;
 	}
@@ -422,13 +439,13 @@ public class RuleBased implements CoreferenceSystem {
 			String name = cm.mention.gloss().toUpperCase().replaceAll(" ","_");
 			Pronoun pOther = Pronoun.valueOrNull(name);
 
-			
+
 			Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
-			System.out.println("Curr pronoun: " + pCurr);
-			System.out.println("Other pronoun: " + pOther);
-			System.out.println("Curr parse: " + currMention.parse);
-			System.out.println("Other parse: " + cm.mention.parse);
-			System.out.println();
+//			System.out.println("Curr pronoun: " + pCurr);
+//			System.out.println("Other pronoun: " + pOther);
+//			System.out.println("Curr parse: " + currMention.parse);
+//			System.out.println("Other parse: " + cm.mention.parse);
+//			System.out.println();
 			if(pOther == null || pOther.speaker.equals(pCurr.speaker)) {
 				currMention.getEntity().remove(currMention);
 				currMention.removeCoreference();
