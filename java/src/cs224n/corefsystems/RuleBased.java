@@ -7,11 +7,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.Stack;
-
-import com.sun.corba.se.impl.javax.rmi.CORBA.Util;
 
 import cs224n.coref.ClusteredMention;
+import cs224n.coref.Country;
 import cs224n.coref.Document;
 import cs224n.coref.Entity;
 import cs224n.coref.Mention;
@@ -412,6 +410,8 @@ public class RuleBased implements CoreferenceSystem {
 
 	public ClusteredMention propose(Tree<String> node, Sentence sentence, Pair<Integer, Integer> range) {
 		
+
+		
 		if (debug) {
 			System.out.println("Proposing node: " + node);	
 		}
@@ -421,12 +421,23 @@ public class RuleBased implements CoreferenceSystem {
 			return null;
 		}
 		ClusteredMention cm = curr.getFirst();
+		
+		
+		if (currDoc.id.contains("(wb/a2e/00/a2e_0025); part 006") && currMention.gloss().equals("I")) {
+			System.out.println("what");
+		}
 
 		Pronoun pOther = Pronoun.valueOrNull(cm.mention.gloss().toUpperCase().replaceAll(" ","_"));
 		Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
 		
 		String headWordOther = cm.mention.headWord();
 		if (pCurr != null && pOther == null && (pCurr.plural) != (headWordOther.charAt(headWordOther.length() - 1) == 's')) {
+			return null;
+		}
+		
+		// Certain rules if referring to a country.
+		if(pCurr != null && pOther == null && Country.isCountry(headWordOther) && 
+				(!pCurr.plural && (pCurr.speaker.equals(Speaker.FIRST_PERSON) || pCurr.speaker.equals(Speaker.SECOND_PERSON)))) {
 			return null;
 		}
 		
