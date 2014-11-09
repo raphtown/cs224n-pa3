@@ -1,0 +1,109 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage[top=1in, bottom=1.5in, left=1in, right=1in]{geometry}
+\author{William Hamilton, Raphael Townshend\footnote{Both authors contributed equally to this assignment. Code and writing was contributed by both authors. Raphael focused more on the rule-based system, while William focused more on the classifier-based system.}}
+\title{CS224n PA3}
+\begin{document}
+\maketitle
+\section{Performance}
+Tables 1 and 2 outline the performance of our non-baseline systems. 
+\begin{table}[h!]
+\centering
+\begin{tabular}{c|m{40pt} m{40pt} m{40pt}| m{40pt} m{40pt} m{40pt}}
+ &  & MUC &  &  & B3 &  \\ 
+& Precision & Recall & F1 & Precision & Recall & F1 \\ 
+\hline 
+Rule-based  & • & • & • & • & • & • \\ 
+Classifier-based & 0.820 & 0.695 & 0.752 & 0.776 & 0.621 & 0.690 \\ 
+\hline 
+\end{tabular}
+\caption{Performance on the dev set.}
+\end{table} 
+\begin{table}[h!]
+\centering
+\begin{tabular}{c|m{40pt} m{40pt} m{40pt}| m{40pt} m{40pt} m{40pt}}
+ &  & MUC &  &  & B3 &  \\ 
+& Precision & Recall & F1 & Precision & Recall & F1 \\ 
+\hline 
+Rule-based  & • & • & • & • & • & • \\ 
+Classifier-based & 0.823 & 0.632 & 0.715 & 0.837 & 0.610 & 0.706 \\ 
+\hline 
+\end{tabular}
+\caption{Performance on the test set.}
+\end{table} 
+
+\section{Classifier-Based System}
+
+This section provides details on the classifier based system.
+
+\subsection{Description and Motivation of Features Used}
+
+The features used in the final system are described below. 
+
+\begin{itemize}[itemsep=-1pt]
+\item
+	\textbf{MDI} [IntIndicator] - The number of mentions in the document occurring between the candidate and target mentions. Motivation: captures salience of candidate. 
+\item
+	\textbf{HED} [IntIndicator]- Levenshtein distance between candidate and fixed mention head words (subsumes exact match).  Motivation:``fuzzy'' extension of the exact match criterion. 
+\item
+	\textbf{(CAND/FIXED)\_NER} [StringIndicator] - NER tag of candidate and fixed mention head words (adding the conjunction hurt the scores). Motivation: different NER types are more/less likely to act as referents.\footnote{Despite the fact that it seems strange to have an indicator feature on the target mention only, this actually helped results a marginal amount.}
+\item
+	\textbf{(CAND/FIXED)\_POS} [StringIndicator + Conjunction] - POS tag of candidate and fixed mention head words (and conjunction of both). Motivation: words with different POS tags are more/less likely to act as referents in general and/or co-refer.
+\item
+	\textbf{GEN} [Indicator] - Whether the gender of the fixed and candidate mentions match. Motivation: gender of coreferents usually correspond (except in small number of cases, e.g. ``sailboat'' referred to as ``her''). 
+%\item
+%	\textbf{(NUM-(MATCH/COMPAT)} [Indicator] -  Whether the candidate and fixed mentions have matching grammatical number or are compatible (e.g., grammatical number of one or both unknown). Motivation: grammatical number of co-referents almost always agree. 
+\item
+	\textbf{SPEAK} [Indicator] - True if both mentions are quoted,  have first-person pronoun head words, and have the same speaker. Motivation: first person pronouns almost always refer to the speaker. 
+\end{itemize}
+	
+Some intuitively reasonable features that were examined but actually hurt results on the dev set included: a feature on the distance between the sentences in question, a feature on the compatibility of the grammatical number of the fixed and candidate mentions, and a feature on the Levenshtein distance between the entire mentions (not just head words).
+Our hypothesis is that these features led to overfitting. 
+
+\subsection{Error-Analysis}
+
+Perhaps the most glaring systematic error in the classifier system is its tendency to chain together pronouns, regardless of their compatibility. 
+For example, in the sentence ``They turned against it'', the system chains together ``They'' and ``it''.  
+Or, even more egregiously, in the sentence``I thank you my pious brother.'', the system chains together all the pronouns! 
+These errors could be addressed by adding a more fine-grained feature on the pronoun type. 
+That is, the \textbf{(CAND/FIXED)\_POS} features could be augmented to include more more refined categories of pronouns. 
+The conjunction of these more refined features would also be necessary in order to learn binary relationships (e.g.,``it'' and ``you'' are incompatible). 
+
+The above example errors also illustrate a second systematic shortcoming of the system: it tends to chain together subjects and objects, whereas this should only happen in rare cases with reflexive verb constructions (e.g., with the ``self'' suffixed reflexive pronouns). 
+This issue could be addressed by adding a conjunction feature on the grammatical role of the target and candidate mentions, and a feature indicating the presence of a reflexive verb/pronoun construction (this second feature would also be conjoined with the grammatical role conjunction).
+
+Lastly, the system often failed to properly deal with first-person speaker pronouns despite the fact that we explicitly added a feature, \textbf{SPEAK},  to address this.
+Our hypothesis is that, since this feature fires rarely in training, it has low weight (which we verified) and thus is overshadowed by other simpler features (e.g., the \textbf{HED} feature).
+
+\subsection{Feature Ablations}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{c||c|c|c|c|c|c|c|}
+Features & All & -\textbf{MDI} & -\textbf{HED} &  -\textbf{NER} & -\textbf{GEN} & -\textbf{POS} & -\textbf{SPEAK}\\ 
+\hline 
+MUC F1& 0.752 & 0.727 & 0.424 &  0.750 & 0.744 & 0.716 & 0.751  \\ 
+\hline 
+B3 F1& 0.691 & 0.670 & 0.520 & 0.688 & 0.672 & 0.657 & 0.683\\ 
+\hline 
+\end{tabular} 
+\caption{Performance on dev set with different feature (sets) ablated. For the -\textbf{POS} and -\textbf{NER} conditions we are ablating all features of that type.}
+\end{table}
+
+Ablation studies revealed that the head word edit distance, mention distance, and POS-based features were by far the most important, as the scores dropped drastically when any of these features were ablated.
+This makes sense since the \textbf{MDI} feature is the only one that captures saliency, the \textbf{HED} feature captures (near)-exact matches (very important), and the POS-based features contain information about whether or not the mentions are pronouns etc. and captures some aspects of compatibility. 
+
+That said, running the system with only these 3 most important types of features gave an MUC F1 of 0.739 and a B3 F1 of 0.669, a significant drop from the full system's performance.  Thus all the features played a part in the overall performance of the system. 
+
+
+
+
+\end{document}
