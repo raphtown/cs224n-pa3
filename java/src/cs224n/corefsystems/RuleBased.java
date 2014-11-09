@@ -42,11 +42,6 @@ public class RuleBased implements CoreferenceSystem {
 							(cs224n.coref.Util.haveGenderAndAreSameGender(mentionPair.getFirst(), mentionPair.getSecond()).equals(Pair.make(true, true)) &&
 									cs224n.coref.Util.haveNumberAndAreSameNumber(mentionPair.getFirst(), mentionPair.getSecond()).equals(Pair.make(true, true)) &&
 									pFirst.speaker.equals(pSecond.speaker))) {
-						if (referringHead.equals("I") && referredHead.equals("you")) {
-							System.out.println("C : " + pFirst + " " + pSecond);
-							System.out.println("C : " + mentionPair.getFirst().gloss() + " " + mentionPair.getSecond().gloss());
-						}
-
 						if (!coreferentHeads.containsKey(referringHead)) {
 							coreferentHeads.put(referringHead, new HashSet<String>());
 							coreferentHeads.get(referringHead).add(referringHead);
@@ -64,12 +59,14 @@ public class RuleBased implements CoreferenceSystem {
 
 	int numToSee = 5;
 	Mention currMention = null;
+	Document currDoc = null;
 	HashMap<Pair<Sentence, Pair<Integer, Integer>>, Pair<ClusteredMention, Boolean>> treeToEntityMap = 
 			new HashMap<Pair<Sentence, Pair<Integer, Integer>>, Pair<ClusteredMention, Boolean>>();
 	@Override
 	public List<ClusteredMention> runCoreference(Document doc) {
 		HashMap<String, ClusteredMention> seenHeads = new HashMap<String, ClusteredMention>();
 		ArrayList<ClusteredMention> clusters = new ArrayList<ClusteredMention>();
+		currDoc = doc;
 		for (Mention m : doc.getMentions()) {
 			String referringHead = m.headWord();
 			boolean foundCoreferent = false;
@@ -78,9 +75,6 @@ public class RuleBased implements CoreferenceSystem {
 			for (ClusteredMention seenMentions : clusters) {
 				if(m.gloss().equals(seenMentions.mention.gloss())) {
 					ClusteredMention cm = m.markCoreferent(seenMentions);
-					if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
-						System.out.println("A : " + cm);
-					}
 					treeToEntityMap.put(Pair.make(m.sentence,rangeOfMention(m)), Pair.make(cm, true));
 					clusters.add(cm);
 					foundCoreferent = true;
@@ -90,19 +84,12 @@ public class RuleBased implements CoreferenceSystem {
 
 			// Otherwise try matching to other heads that were found to be coreferent in the training.
 			if (!foundCoreferent && coreferentHeads.containsKey(referringHead)) {
-				if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
-					System.out.println(referringHead);
-					System.out.println(coreferentHeads.get(referringHead));
-				}
 				for (String referredHead : coreferentHeads.get(referringHead)) {
 					if (seenHeads.containsKey(referredHead)) {
 						ClusteredMention oldCm = seenHeads.get(referredHead);
 						ClusteredMention newCm = m.markCoreferent(oldCm);
 						clusters.add(newCm);
-						if (doc.id.contains("(wb/a2e/00/a2e_0025); part 006")) {
-							System.out.println("B : " + newCm);
-						}
-						treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(newCm, false));
+						treeToEntityMap.put(Pair.make(m.sentence, rangeOfMention(m)), Pair.make(newCm, true));
 						seenHeads.put(referringHead, oldCm);
 						foundCoreferent = true;
 						break;
@@ -179,6 +166,7 @@ public class RuleBased implements CoreferenceSystem {
 			if (debug) {
 				System.out.println("Step 3");
 			}
+
 			Pair<Tree<String>, Pair<Integer, Integer>> curr = sentenceParse.getTreeAtPath(rootToX);
 			Tree<String> currTree = curr.getFirst();
 			Pair<Integer, Integer> currRange = curr.getSecond();
@@ -423,6 +411,7 @@ public class RuleBased implements CoreferenceSystem {
 	}
 
 	public ClusteredMention propose(Tree<String> node, Sentence sentence, Pair<Integer, Integer> range) {
+		
 		if (debug) {
 			System.out.println("Proposing node: " + node);	
 		}
@@ -433,25 +422,19 @@ public class RuleBased implements CoreferenceSystem {
 		}
 		ClusteredMention cm = curr.getFirst();
 
+		Pronoun pOther = Pronoun.valueOrNull(cm.mention.gloss().toUpperCase().replaceAll(" ","_"));
+		Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
+		
+		if (pOther == null || pCurr == null || 
+				(cs224n.coref.Util.haveGenderAndAreSameGender(currMention, cm.mention).equals(Pair.make(true, true)) &&
+				cs224n.coref.Util.haveNumberAndAreSameNumber(currMention, cm.mention).equals(Pair.make(true, true)) &&
+				pOther.speaker.equals(pCurr.speaker))) {
 
-		if (cs224n.coref.Util.haveGenderAndAreSameGender(currMention, cm.mention).equals(Pair.make(true, true)) &&
-				cs224n.coref.Util.haveNumberAndAreSameNumber(currMention, cm.mention).equals(Pair.make(true, true))) {
-			String name = cm.mention.gloss().toUpperCase().replaceAll(" ","_");
-			Pronoun pOther = Pronoun.valueOrNull(name);
-
-
-			Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
-//			System.out.println("Curr pronoun: " + pCurr);
-//			System.out.println("Other pronoun: " + pOther);
-//			System.out.println("Curr parse: " + currMention.parse);
-//			System.out.println("Other parse: " + cm.mention.parse);
-//			System.out.println();
-			if(pOther == null || pOther.speaker.equals(pCurr.speaker)) {
-				currMention.getEntity().remove(currMention);
-				currMention.removeCoreference();
-				ClusteredMention newCm = currMention.markCoreferent(cm);
-				return newCm;
-			}
+		
+			currMention.getEntity().remove(currMention);
+			currMention.removeCoreference();
+			ClusteredMention newCm = currMention.markCoreferent(cm);
+			return newCm;
 
 		}
 		return null;
