@@ -426,7 +426,7 @@ public class RuleBased implements CoreferenceSystem {
 		Pronoun pCurr = Pronoun.valueOrNull(currMention.gloss().toUpperCase().replaceAll(" ","_"));
 		
 		String headWordOther = cm.mention.headWord();
-		if (pCurr != null && pOther == null && pCurr.plural && headWordOther.charAt(headWordOther.length() - 1) != 's') {
+		if (pCurr != null && pOther == null && (pCurr.plural) != (headWordOther.charAt(headWordOther.length() - 1) == 's')) {
 			return null;
 		}
 		
