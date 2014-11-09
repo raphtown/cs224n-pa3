@@ -80,6 +80,19 @@ public class RuleBased implements CoreferenceSystem {
 				}
 			}
 
+			// Next, exact head matching.
+			if (!foundCoreferent) {
+				for (ClusteredMention seenMentions : clusters) {
+					if(m.headWord().equals(seenMentions.mention.headWord())) {
+						ClusteredMention cm = m.markCoreferent(seenMentions);
+						treeToEntityMap.put(Pair.make(m.sentence,rangeOfMention(m)), Pair.make(cm, true));
+						clusters.add(cm);
+						foundCoreferent = true;
+						break;
+					}
+				}
+			}
+
 			// Otherwise try matching to other heads that were found to be coreferent in the training.
 			if (!foundCoreferent && coreferentHeads.containsKey(referringHead)) {
 				for (String referredHead : coreferentHeads.get(referringHead)) {
