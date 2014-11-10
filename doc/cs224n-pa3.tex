@@ -8,20 +8,27 @@
 \usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
 \usepackage[top=1in, bottom=1.5in, left=1in, right=1in]{geometry}
+
+
+\colorlet{light-gray}{gray!20}
+
 \author{William Hamilton, Raphael Townshend\footnote{Both authors contributed equally to this assignment. Code and writing was contributed by both authors. Raphael focused more on the rule-based system, while William focused more on the classifier-based system.}}
 \title{CS224n PA3}
 \begin{document}
 \maketitle
 \section{Performance}
-Tables 1 and 2 outline the performance of our non-baseline systems. 
+Tables 1 and 2 outline the performance of our non-naive systems. 
 \begin{table}[h!]
 \centering
 \begin{tabular}{c|m{40pt} m{40pt} m{40pt}| m{40pt} m{40pt} m{40pt}}
  &  & MUC &  &  & B3 &  \\ 
 & Precision & Recall & F1 & Precision & Recall & F1 \\ 
 \hline 
-Rule-based  & • & • & • & • & • & • \\ 
+Better Baseline & 0.785 & 0.679 & 0.728 & 0.684 & 0.631 & 0.656 \\
+Rule-based  & 0.797 & 0.745 & 0.770 & 0.728 & 0.654 & 0.689 \\ 
 Classifier-based & 0.820 & 0.695 & 0.752 & 0.776 & 0.621 & 0.690 \\ 
 \hline 
 \end{tabular}
@@ -33,16 +40,54 @@ Classifier-based & 0.820 & 0.695 & 0.752 & 0.776 & 0.621 & 0.690 \\
  &  & MUC &  &  & B3 &  \\ 
 & Precision & Recall & F1 & Precision & Recall & F1 \\ 
 \hline 
-Rule-based  & • & • & • & • & • & • \\ 
+Better Baseline & 0.772 & 0.574 & 0.658 & 0.757 & 0.577 & 0.655 \\
+Rule-based  & 0.785 & 0.694 & 0.737 & 0.760 & 0.657 & 0.705 \\ 
 Classifier-based & 0.823 & 0.632 & 0.715 & 0.837 & 0.610 & 0.706 \\ 
 \hline 
 \end{tabular}
 \caption{Performance on the test set.}
 \end{table} 
 
-\section{Classifier-Based System}
+\section{Baseline Systems}
 
-This section provides details on the classifier based system.
+The most naive baselines implemented were the one cluster and all singletons baselines. The recall of the one cluster is 100\% because every coreferrence in the gold set is covered in the one cluster.  However, the precision suffers because of this.  On the other hand, the all singletons baseline has a 100\% precision because it essentially marks no coreferrents. Yet in this case the recall suffers greatly (0 in the MUC metric!).
+
+For the better baseline, we kept statistics on which mention heads were coreferrent with one another.  Then, mentions were marked as coreferrent if they matched either other exactly or if the previously collected statistics indicated their heads could be corefferent.  This method obtained good baseline results, and yielded a useful starting point for the following, more complex systems.
+
+\section{Rule-Based System}
+
+\subsection{Overview}
+
+The rule-based system employed the better baseline as a starting point, and then added a number of other rules on top to improve performance.  The primary rules added were an augmented Hobbs' algorithm along with exact head-matching.
+
+\subsection{Rules}
+
+A useful rule added was performing an exact head matching step after the exact matching step but before the coreferrent head checking.  This allowed for a noun phrase such as $God's$ to be linked to a reference such as $God$ before relying on the coreferrent head statistics computed in training.  The reasoning behind this is that exactly matching heads are a much better predictor of co-reference as opposed to just having seen the two heads co-refer previously.  This feature was extended and further used in the classifier system by encoding edit distance between heads (see \textbf{HED} under 4.1).  However, positioning this pass between the exact matching and the coreferrent head matching would not be easily implementable in a classifier based system because such a system would make only a single pass and not be able to account for such a multi-pass approach.
+
+The basic Hobbs algorithm was also implemented, but was then modified by improving the final check stage.  If the proposed mentions were both pronouns, gender, number, and person were checked to make sure they were the same.  However, we also estimated non-pronoun plurality by checking the plurality of the head word (i.e. if the last letter is an 's').  In addition, a first pass at recognizing places was made by creating a Country idenitification module.  Mentions that were recognized as being a country then imposed additional constraints on the coreferrent node, forcing it not to be a first or second-person singular pronoun (e.g. $I$ could not refer to $Yemen$).  Further work could be performed in this direction by adding a person recognizing module (e.g. if $Mr.$ or $Mrs.$ is present in the mention) and encoding that places and people cannot be coreferrent.  It should also be noted that Hobbs algorithm could not be used in a classifier based system because of the multi-pass and state-based nature of the algorithm.
+
+\subsection{Testing and Error Analysis}
+
+Rules were designed by observing the system's output mistakes and adding rules to correct for the observed errors.  The exact head matching rule was designed using this procedure when the following sentence was observed ($God$ and $God's$ were coreferrent): 
+
+\begin{lstlisting}[frame=single, backgroundcolor=\color{light-gray}]
+{{God 's}} bless {{you}} and guide {{your}} steps to good , 
+and {{God}} make {{you}} someone {{he}} is satisfied with [...]
+\end{lstlisting}
+
+Another source of errors is when the speaker in the document changes.  It is not always possible to tell definitively when the speaker has changed, though the formatting of the document provides cues.  For example:
+
+\begin{lstlisting}[frame=single, backgroundcolor=\color{light-gray}]
+May {{Allah}} forgive {{you}} in the protection of {{Allah}} . 
+----------------------------- 
+{{My}} outstanding brother : May {{Allah}} reward {{you}} [...]
+\end{lstlisting}
+
+In this case, the first $you$ and $my$ are coreferrent because the speakers have changed.  In a classification based system it may be possible to learn the separating line os present when the speaker changes, but designing a purely rule-based approach to this would be very tuned to whatever examples we are dealing with (since the solid line delimiter is very example-specific).
+
+This leads to the more general point that rule-based and non-statistical nature of the system can easily lend itself to brittleness because there is no notion of uncertainty.  Thus, a rule designed to fix one issue could easily cause breakage in other parts of the system. 
+
+\section{Classifier-Based System}
 
 \subsection{Description and Motivation of Features Used}
 
